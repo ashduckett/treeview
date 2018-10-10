@@ -38,6 +38,17 @@
             color: white;
         }
 
+        #treeMenuContextMenu ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #treeMenuContextMenu ul li a {
+            text-decoration: none;
+            color: black;
+        }
+
 
     
     </style>
@@ -53,8 +64,60 @@
 
     <script>
         const container = document.getElementById('treeMenuContainer');
-        const tree = new TreeMenu(container);
-
+        
+        
+        
+        
+        
+        
+    const dummyData = [
+    {
+        id: 0,
+        parentId: null,
+        title: 'Item 1',
+        identifier: 'item_1'
+    },
+    {
+        id: 1,
+        parentId: null,
+        title: 'Item 2',
+        identifier: 'item_2'
+    },
+    {
+        id: 2,
+        parentId: null,
+        title: 'Item 3',
+        identifier: 'item_3'
+    },
+    {
+        id: 3,
+        parentId: 0,
+        title: 'Child Item 1',
+        identifier: 'child_item_1'
+    },
+    {
+        id: 5,
+        parentId: 0,
+        title: 'Child Item 2',
+        identifier: 'child_item_2'
+    },
+    {
+        id: 10,
+        parentId: 3,
+        title: 'Child of child',
+        identifier: 'child_of_child'
+    },
+    {
+        id: 10,
+        parentId: 1,
+        title: 'Child of id 1',
+        identifier: 'child_of_id_1'
+    }
+];
+        
+        
+    // const tree = new TreeMenu(container, dummyData);
+    const tree = new TreeController(container, dummyData);
         
     
     </script>

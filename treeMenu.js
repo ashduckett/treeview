@@ -1,185 +1,125 @@
-// Build some dummy data.
-// Data should be an array of objects.
-
-const sourceTreeData = [
-    {
-        id: 0,
-        parentId: null,
-        title: 'Item 1',
-        identifier: 'item_1'
-    },
-    {
-        id: 1,
-        parentId: null,
-        title: 'Item 2',
-        identifier: 'item_2'
-    },
-    {
-        id: 2,
-        parentId: null,
-        title: 'Item 3',
-        identifier: 'item_3'
-    },
-    {
-        id: 3,
-        parentId: 0,
-        title: 'Child Item 1',
-        identifier: 'child_item_1'
-    },
-    {
-        id: 5,
-        parentId: 0,
-        title: 'Child Item 2',
-        identifier: 'child_item_2'
-    },
-    {
-        id: 10,
-        parentId: 3,
-        title: 'Child of child',
-        identifier: 'child_of_child'
-    },
-    {
-        id: 10,
-        parentId: 1,
-        title: 'Child of id 1',
-        identifier: 'child_of_id_1'
-    }
-];
-let descendentToHide = [];
-
-// Will need to hide everything that is a child of something.
-// Will need to make visible all children of single item when single item selected.
-
-function NewTreeNode(title, id, parentId, parentTree) {
-    this.title = title;
+function NodeModel(id, parentId, title, identifier, treeModel) {
+    this.childrenNodes = [];
     this.id = id;
     this.parentId = parentId;
-    this.parentTree = parentTree;
+    this.title = title;
+    this.identifier = identifier;
+    this.treeModel = treeModel;
+
+    // Find all of the nodes own children and store them.
+    const filteredNodes = treeModel.data.filter(function(item) {
+        return item.parentId == id;
+    });
+
+    filteredNodes.forEach(function(child) {
+        this.childrenNodes.push(new NodeModel(child.id, child.parentId, child.title, child.identifier, treeModel));
+    }, this);
+}
+
+function TreeModel(data) {
+    this.nodes = [];
+    this.data = data;
+
+
+    // You only want to run this on root nodes
+    const parentNodes = data.filter(function(item) {
+        return item.parentId == null;
+    });
+
+    parentNodes.forEach(function(item) {
+        const node = new NodeModel(item.id, item.parentId, item.title, item.identifier, this);
+        this.nodes.push(node);
+    }, this);
+}
+
+TreeModel.prototype.getAllRoots = function() {
+    return this.nodes.filter(function(node) {
+        return node.parentId === null;
+    });
+};
+
+
+function NodeView(nodeModel, container, parentTree, treeLevel) {
+    // Each node will be a div
     this.element = document.createElement('div');
-    this.element.innerHTML = title;
-    this.everyDescendent = [];
-    this.immediateDescendents = [];
-};
+    this.element.innerHTML = nodeModel.title;
+    this.container = container;
+    this.nodeModel = nodeModel;
+    this.showChildren = false;
+    this.parentTree = parentTree;
+    this.childrenNodeViews = [];
+    this.treeLevel = treeLevel;
+    
 
-// Experiment. Iterate over all of the data one time so we know all about it when it comes to rendering it.
-function NewTreeNodeCollection(data) {
-    this.treeNodes = [];
+    nodeModel.childrenNodes.forEach(function(child) {
+        const childNodeView = new NodeView(child, container, parentTree, treeLevel + 1);
 
-    NewTreeNodeCollection.treeNodesStatic = this.treeNodes;
-    // Now run over sourceTreeData and add all the nodes
-    data.forEach(function(dataItem) {
-
-        // Find the children
-        const node = new NewTreeNode(dataItem.title, dataItem.id, dataItem.parentId, this);
-        this.addNode(node);
-    }, this);
-
-    // Grab every descendent and attach it to each individual node.
-    this.treeNodes.forEach(function(treeNode) {
-        NewTreeNode.everyDescendent = [];
-        NewTreeNode.getEveryDescendent(treeNode);
-        treeNode.everyDescendent = NewTreeNode.everyDescendent;
-    });
-
-    // For convenience grab immediate descendence and attach those
-    this.treeNodes.forEach(function(item) {
-        const immediateDescendents = this.treeNodes.filter(function(desc) {
-            return desc.parentId === item.id;
-        });
-
-        item.immediateDescendents = immediateDescendents;
-    }, this);
-
-
-    // Now all the nodes are added, can we add event handlers?
-    this.treeNodes.forEach(function(node) {
-
-        node.element.addEventListener('dblclick', function() {
-            // If the first of the immediate children is hidden, show all immediate
-            if (node.immediateDescendents[0] && node.immediateDescendents[0].element.style.display == 'none') {
-                node.immediateDescendents.forEach(function(desc) {
-                    desc.element.style.display = 'block';
-                });
+        childNodeView.element.addEventListener('dblclick', function(evt) {
+            if (childNodeView.showChildren == false) {
+                childNodeView.showChildren = true;
             } else {
-                node.everyDescendent.forEach(function(desc) {
-                    desc.element.style.display = 'none';
-                });
+                childNodeView.showChildren = false;
             }
-
-
+            parentTree.render();
         });
-        
+
+
+        this.childrenNodeViews.push(childNodeView);
     }, this);
+}
 
+NodeView.prototype.render = function() {
+    this.element.style.paddingLeft = this.treeLevel * 10 + 'px';
+    this.container.appendChild(this.element);
+    const self = this;
 
+    this.childrenNodeViews.forEach(function(childNodeView) {
+        if (this.showChildren == true)
+        childNodeView.render();
+    }, this);
 };
 
+function TreeView(container, model) {
+    this.model = model;
+    this.nodeViews = [];
+    this.container = container;
 
-NewTreeNodeCollection.renderData = function(data, container, currentPadding = 10) {
-    
-    data.forEach(function(item, index) {
-        item.element.style.paddingLeft = currentPadding + 'px';
-        container.appendChild(item.element);
+    const self = this;
 
-        const childrenOfCurrent = NewTreeNodeCollection.treeNodesStatic.filter(function(child) {
-            
-            return child.parentId === item.id;
+    this.model.nodes.forEach(function(node) {
+       
+        const nodeView = new NodeView(node, container, self, 0);
+        
+        // How are we going to add this to new the children of the children?
+        nodeView.element.addEventListener('dblclick', function(evt) {
+            if (nodeView.showChildren == false) {
+                nodeView.showChildren = true;
+            } else {
+                nodeView.showChildren = false;
+            }
+            self.render();
         });
 
-        NewTreeNodeCollection.renderData(childrenOfCurrent, container, currentPadding + 10);
+        this.nodeViews.push(nodeView);
+    
+    
+    
+    }, this);
+    
+}
+
+TreeView.prototype.render = function() {
+    const self = this;
+    this.container.innerHTML = '';
+
+    this.nodeViews.forEach(function(nodeView) {
+        nodeView.render();
     });
-
-
-    // Now absolutely everything is rendered, hide anything that isn't a parent
-    const childrenOfAll = NewTreeNodeCollection.treeNodesStatic.filter(function(child) {
-        return child.parentId !== null;
-    });
-
-    childrenOfAll.forEach(function(child) {
-        child.element.style.display = 'none';
-    });
-
-
 };
 
 
-
-NewTreeNode.getEveryDescendent = function(node) {
-    const immediateDescendents = NewTreeNodeCollection.treeNodesStatic.filter(function(desc) {
-        return desc.parentId == node.id;
-    });
-
-    immediateDescendents.forEach(function(desc) {
-        NewTreeNode.everyDescendent.push(desc);
-        NewTreeNode.getEveryDescendent(desc);
-    });
-
-    
-};
-
-NewTreeNodeCollection.prototype.addNode = function(node) {
-    this.treeNodes.push(node);
-};
-
-NewTreeNodeCollection.prototype.render = function(container) {
-
-    const parents = this.treeNodes.filter(function(node) {
-        return node.parentId == null;
-    });
-    
-    NewTreeNodeCollection.renderData(parents, container);
-};
-
-// Initialise this in a constructor later
-const treeNodeCollection = new NewTreeNodeCollection(sourceTreeData);
-
-
-// When you click on one, you want to display the immediate children.
-
-const TreeMenu = function(container, data) {
-    //container.style.backgroundColor = 'lightblue';
-    treeNodeCollection.render(container);
-
-    
-    
+function TreeController(container, data) {
+    const model = new TreeModel(data);
+    const treeView = new TreeView(container, model);
+    treeView.render();
 };
