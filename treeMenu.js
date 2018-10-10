@@ -1,3 +1,14 @@
+document.body.addEventListener('contextmenu', function(evt) {
+    evt.preventDefault();
+});
+
+document.body.addEventListener('mousedown', function(evt) {
+    if (document.getElementById('treeMenuContextMenu') !== null) {
+        document.getElementById('treeMenuContextMenu').remove();
+    }
+
+});
+
 function NodeModel(id, parentId, title, identifier, treeModel) {
     this.childrenNodes = [];
     this.id = id;
@@ -6,11 +17,12 @@ function NodeModel(id, parentId, title, identifier, treeModel) {
     this.identifier = identifier;
     this.treeModel = treeModel;
 
-    // Find all of the nodes own children and store them.
+    // Find all of the node's own children and store them.
     const filteredNodes = treeModel.data.filter(function(item) {
         return item.parentId == id;
     });
 
+    
     filteredNodes.forEach(function(child) {
         this.childrenNodes.push(new NodeModel(child.id, child.parentId, child.title, child.identifier, treeModel));
     }, this);
@@ -21,7 +33,7 @@ function TreeModel(data) {
     this.data = data;
 
 
-    // You only want to run this on root nodes
+    // You only want to run this on root nodes...actually, that might not be a problem. You might get away with just...find out what data is initially.
     const parentNodes = data.filter(function(item) {
         return item.parentId == null;
     });
@@ -50,9 +62,32 @@ function NodeView(nodeModel, container, parentTree, treeLevel) {
     this.childrenNodeViews = [];
     this.treeLevel = treeLevel;
     
-
+    const self = this;
     nodeModel.childrenNodes.forEach(function(child) {
         const childNodeView = new NodeView(child, container, parentTree, treeLevel + 1);
+
+        childNodeView.element.addEventListener('mousedown', function(evt) {
+            // If it was a right-click
+            evt.stopPropagation();
+            self.parentTree.handleContextMenu(evt);
+            
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         childNodeView.element.addEventListener('dblclick', function(evt) {
             if (childNodeView.showChildren == false) {
@@ -100,6 +135,13 @@ function TreeView(container, model) {
             self.render();
         });
 
+        nodeView.element.addEventListener('mousedown', function(evt) {
+            // If it was a right-click
+            evt.stopPropagation();
+            self.handleContextMenu(evt);
+            
+        });
+
         this.nodeViews.push(nodeView);
     
     
@@ -107,6 +149,64 @@ function TreeView(container, model) {
     }, this);
     
 }
+
+
+TreeView.prototype.handleContextMenu = function(evt) {
+    if (evt.button === 2) {
+                
+        if (document.getElementById('treeMenuContextMenu') !== null) {
+            document.getElementById('treeMenuContextMenu').remove();
+        }
+        
+        
+        const menuContainer = document.createElement('div');
+        menuContainer.style.position = 'absolute';
+        menuContainer.style.top = evt.clientY + 'px';
+        menuContainer.style.left = evt.clientX + 'px';
+        menuContainer.style.backgroundColor = 'white';
+        menuContainer.style.borderColor = 'black';
+        menuContainer.style.borderStyle = 'solid';
+        menuContainer.style.borderWidth = '1px';
+        menuContainer.id = 'treeMenuContextMenu';
+
+        const menuList = document.createElement('ul');
+
+        const menuItemNewRootItem = document.createElement('li');
+        const menuItemNewRootItemLink = document.createElement('a');
+        menuItemNewRootItemLink.href = '#';
+        menuItemNewRootItemLink.innerHTML = 'New Root';
+        menuItemNewRootItem.appendChild(menuItemNewRootItemLink);
+        menuList.appendChild(menuItemNewRootItem);
+
+        const menuItemNewItem = document.createElement('li');
+        const menuItemNewItemLink = document.createElement('a');
+        menuItemNewItemLink.href = '#';
+        menuItemNewItemLink.innerHTML = 'New Item';
+        menuItemNewItem.appendChild(menuItemNewItemLink);
+        
+        menuList.appendChild(menuItemNewItem);
+
+
+
+        const menuItemDelItem = document.createElement('li');
+        const menuItemDelItemLink = document.createElement('a');
+        menuItemDelItemLink.href = '#';
+        menuItemDelItemLink.innerHTML = 'Delete';
+        menuItemDelItem.appendChild(menuItemDelItemLink);
+        menuList.appendChild(menuItemDelItem);
+
+
+        const menuItemRenameItem = document.createElement('li');
+        const menuItemRenameItemLink = document.createElement('a');
+        menuItemRenameItemLink.href = '#';
+        menuItemRenameItemLink.innerHTML = 'Rename'; // Could be edit?
+        menuItemRenameItem.appendChild(menuItemRenameItemLink);
+        menuList.appendChild(menuItemRenameItem);
+
+        menuContainer.appendChild(menuList);
+        document.body.appendChild(menuContainer);
+    }
+};
 
 TreeView.prototype.render = function() {
     const self = this;
@@ -122,4 +222,8 @@ function TreeController(container, data) {
     const model = new TreeModel(data);
     const treeView = new TreeView(container, model);
     treeView.render();
+};
+
+TreeController.prototype.newNode = function() {
+
 };
