@@ -36,11 +36,6 @@
             color: white;
         }
 
-        #treeMenuContextMenu li {
-            /* padding-top: 0.3em;
-            padding-bottom: 0.3em; */
-        }
-
         #treeMenuContextMenu li:hover {
             background-color: lightgray;
         }
@@ -67,19 +62,41 @@
 <body>
     <div id="treeMenuContainer"></div>
 
-
-
+    <script src="ContextMenu.js"></script>
+    <script src="NodeModel.js"></script>
     <script src="treeMenu.js"></script>
 
 
     <script>
-        const container = document.getElementById('treeMenuContainer');
-        
-        
-        
-        
-        
-        
+        function KnowledgeView(container, dummyData) {
+            const tree = new TreeController(container, dummyData, this);
+        }
+
+
+        KnowledgeView.prototype.itemSelected = function(obj) {
+            console.log('item was selected')
+        };
+
+        KnowledgeView.prototype.contextMenuItemAddRootItem = function() {
+            console.log('root item add')
+        };
+
+        KnowledgeView.prototype.contextMenuItemAddItem = function(obj) {
+            console.log('item add')
+        };
+
+        KnowledgeView.prototype.contextMenuRemoveItem = function(obj) {
+            console.log('item was selected')
+        };
+
+
+
+
+
+
+
+
+
     const dummyData = [
     {
         id: 0,
@@ -125,9 +142,9 @@
     }
 ];
         
+    knowledgeView = new KnowledgeView(document.getElementById('treeMenuContainer'), dummyData);
         
-    // const tree = new TreeMenu(container, dummyData);
-    const tree = new TreeController(container, dummyData);
+    
         
     
     </script>

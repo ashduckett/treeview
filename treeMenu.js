@@ -2,36 +2,16 @@ document.body.addEventListener('contextmenu', function(evt) {
     evt.preventDefault();
 });
 
-document.body.addEventListener('mousedown', function(evt) {
+// This made the menu disappear but not respond to selections
+document.body.addEventListener('click', function(evt) {
     if (document.getElementById('treeMenuContextMenu') !== null) {
-        document.getElementById('treeMenuContextMenu').remove();
+         document.getElementById('treeMenuContextMenu').remove();
     }
-
 });
-
-function NodeModel(id, parentId, title, identifier, treeModel) {
-    this.childrenNodes = [];
-    this.id = id;
-    this.parentId = parentId;
-    this.title = title;
-    this.identifier = identifier;
-    this.treeModel = treeModel;
-
-    // Find all of the node's own children and store them.
-    const filteredNodes = treeModel.data.filter(function(item) {
-        return item.parentId == id;
-    });
-
-    
-    filteredNodes.forEach(function(child) {
-        this.childrenNodes.push(new NodeModel(child.id, child.parentId, child.title, child.identifier, treeModel));
-    }, this);
-}
 
 function TreeModel(data) {
     this.nodes = [];
     this.data = data;
-
 
     // You only want to run this on root nodes...actually, that might not be a problem. You might get away with just...find out what data is initially.
     const parentNodes = data.filter(function(item) {
@@ -48,6 +28,10 @@ TreeModel.prototype.getAllRoots = function() {
     return this.nodes.filter(function(node) {
         return node.parentId === null;
     });
+};
+
+TreeModel.prototype.addNewRoot = function(newRoot) {
+    this.nodes.push(newRoot);
 };
 
 
@@ -67,27 +51,10 @@ function NodeView(nodeModel, container, parentTree, treeLevel) {
         const childNodeView = new NodeView(child, container, parentTree, treeLevel + 1);
 
         childNodeView.element.addEventListener('mousedown', function(evt) {
-            // If it was a right-click
-            evt.stopPropagation();
-            self.parentTree.handleContextMenu(evt);
-            
+            if (evt.button === 2) {
+                self.parentTree.handleContextMenu(evt, childNodeView);
+            }
         });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         childNodeView.element.addEventListener('dblclick', function(evt) {
             if (childNodeView.showChildren == false) {
@@ -114,12 +81,14 @@ NodeView.prototype.render = function() {
     }, this);
 };
 
-function TreeView(container, model) {
+function TreeView(container, model, controller) {
     this.model = model;
     this.nodeViews = [];
     this.container = container;
+    this.controller = controller;
 
     const self = this;
+
 
     this.model.nodes.forEach(function(node) {
        
@@ -135,81 +104,50 @@ function TreeView(container, model) {
             self.render();
         });
 
-        nodeView.element.addEventListener('mousedown', function(evt) {
-            // If it was a right-click
-            evt.stopPropagation();
-            self.handleContextMenu(evt);
-            
+        // Let the controller know an item has been selected and which
+        nodeView.element.addEventListener('click', function() {
+            self.controller.treeItemClicked(nodeView);
         });
 
+        // Let the controller know an item is being right clicked and fire the context menu
+        nodeView.element.addEventListener('mousedown', function(evt) {
+            if (evt.button === 2) {
+                self.handleContextMenu(evt, nodeView);
+            }
+        });
         this.nodeViews.push(nodeView);
-    
-    
-    
     }, this);
-    
 }
 
 
-TreeView.prototype.handleContextMenu = function(evt) {
-    if (evt.button === 2) {
-                
-        if (document.getElementById('treeMenuContextMenu') !== null) {
-            document.getElementById('treeMenuContextMenu').remove();
-        }
-        
-        
-        const menuContainer = document.createElement('div');
-        menuContainer.style.position = 'absolute';
-        menuContainer.style.top = evt.clientY + 'px';
-        menuContainer.style.left = evt.clientX + 'px';
-        menuContainer.style.backgroundColor = 'white';
-        menuContainer.style.borderColor = 'black';
-        menuContainer.style.borderStyle = 'solid';
-        menuContainer.style.borderWidth = '1px';
-        menuContainer.id = 'treeMenuContextMenu';
+TreeView.prototype.handleContextMenu = function(evt, nodeView) {
 
-        const menuList = document.createElement('ul');
+    console.log('handlecontextmenu fired. Here we need to talk to the context menu object.');
 
-        const menuItemNewRootItem = document.createElement('li');
-        const menuItemNewRootItemLink = document.createElement('a');
-        menuItemNewRootItemLink.href = '#';
-        menuItemNewRootItemLink.innerHTML = 'New Root';
-        menuItemNewRootItem.appendChild(menuItemNewRootItemLink);
-        menuList.appendChild(menuItemNewRootItem);
+    console.log(nodeView);
 
-        const menuItemNewItem = document.createElement('li');
-        const menuItemNewItemLink = document.createElement('a');
-        menuItemNewItemLink.href = '#';
-        menuItemNewItemLink.innerHTML = 'New Item';
-        menuItemNewItem.appendChild(menuItemNewItemLink);
-        
-        menuList.appendChild(menuItemNewItem);
+    // How about we create a new context menu instance here and then render it based on evt.
+    // We can add our actions and the correct functions here.
 
+    var self = this;
+    const newRoot = new ContextMenuItem('New Root', function() {
+        self.controller.newTreeRootItemClicked();
+    });
 
+    const newItem = new ContextMenuItem('New Item', function() {
+        self.controller.newTreeItemClicked(nodeView);
+    });
 
-        const menuItemDelItem = document.createElement('li');
-        const menuItemDelItemLink = document.createElement('a');
-        menuItemDelItemLink.href = '#';
-        menuItemDelItemLink.innerHTML = 'Delete';
-        menuItemDelItem.appendChild(menuItemDelItemLink);
-        menuList.appendChild(menuItemDelItem);
+    const delItem = new ContextMenuItem('Remove Item', function() {
+        self.controller.removeTreeItemClicked(nodeView);
+    });
 
-
-        const menuItemRenameItem = document.createElement('li');
-        const menuItemRenameItemLink = document.createElement('a');
-        menuItemRenameItemLink.href = '#';
-        menuItemRenameItemLink.innerHTML = 'Rename'; // Could be edit?
-        menuItemRenameItem.appendChild(menuItemRenameItemLink);
-        menuList.appendChild(menuItemRenameItem);
-
-        menuContainer.appendChild(menuList);
-        document.body.appendChild(menuContainer);
-    }
+    console.log('new menu initialised')
+    const contextMenu = new ContextMenu(nodeView.element, [newRoot, newItem, delItem], evt);
+    contextMenu.renderContextMenu();
 };
 
 TreeView.prototype.render = function() {
-    const self = this;
     this.container.innerHTML = '';
 
     this.nodeViews.forEach(function(nodeView) {
@@ -217,13 +155,37 @@ TreeView.prototype.render = function() {
     });
 };
 
-
-function TreeController(container, data) {
-    const model = new TreeModel(data);
-    const treeView = new TreeView(container, model);
-    treeView.render();
+TreeView.prototype.addRoot = function(nodeView) {
+    this.nodeViews.push(nodeView)
 };
 
-TreeController.prototype.newNode = function() {
+function TreeController(container, data, parentController) {
+    this.model = new TreeModel(data);
+    this.treeView = new TreeView(container, this.model, this);
+    this.treeView.render();
+    this.container = container;
+    this.parentController = parentController;
+};
 
+TreeController.prototype.newTreeRootItemClicked = function() {
+    console.log('We should construct a new tree root item here');
+    this.parentController.contextMenuItemAddRootItem();
+};
+
+TreeController.prototype.newTreeItemClicked = function(nodeView) {
+    console.log('We should construct a new tree item here');
+    this.parentController.contextMenuItemAddItem();
+
+};
+
+// Swap the node view for a node model
+TreeController.prototype.removeTreeItemClicked = function(nodeView) {
+    console.log('We should remove tree item here');
+    this.parentController.contextMenuRemoveItem();
+};
+
+TreeController.prototype.treeItemClicked = function(nodeView) {
+    console.log('We should display correct documentation here');
+    console.log(nodeView.nodeModel.identifier)
+    this.parentController.itemSelected();
 };
